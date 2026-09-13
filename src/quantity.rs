@@ -55,6 +55,25 @@ pub fn parse_leading_quantity(line: &str) -> Option<(f64, &str)> {
     Some((value, rest))
 }
 
+/// Looks for a serving-count header such as "Serves 4", "Serves: 6", or
+/// "Yield 8 servings" at the start of a line, and returns the number if
+/// found. This lets the caller fall back to it when `--from` is not given
+/// on the command line.
+pub fn detect_serving_count(line: &str) -> Option<f64> {
+    let trimmed = line.trim_start();
+    let lower = trimmed.to_ascii_lowercase();
+    let keyword = ["serves", "yields", "yield"]
+        .iter()
+        .find(|k| lower.starts_with(**k))?;
+
+    let rest = trimmed[keyword.len()..]
+        .trim_start()
+        .trim_start_matches(':')
+        .trim_start();
+    let (first, _) = split_first_word(rest)?;
+    first.parse().ok()
+}
+
 const NAMED_FRACTIONS: &[(f64, &str)] = &[
     (0.125, "1/8"),
     (0.25, "1/4"),
@@ -134,5 +153,25 @@ mod tests {
         assert_eq!(format_quantity(2.25), "2 1/4");
         assert_eq!(format_quantity(0.75), "3/4");
         assert_eq!(format_quantity(3.0), "3");
+    }
+
+    #[test]
+    fn detects_serves_header() {
+        assert_eq!(detect_serving_count("Serves 4"), Some(4.0));
+        assert_eq!(detect_serving_count("Serves: 4"), Some(4.0));
+        assert_eq!(detect_serving_count("serves 4 people"), Some(4.0));
+    }
+
+    #[test]
+    fn detects_yield_header() {
+        assert_eq!(detect_serving_count("Yield 6"), Some(6.0));
+        assert_eq!(detect_serving_count("Yields: 8 servings"), Some(8.0));
+    }
+
+    #[test]
+    fn detect_serving_count_ignores_non_header_lines() {
+        assert_eq!(detect_serving_count("2 cups flour"), None);
+        assert_eq!(detect_serving_count("Bake at 375F"), None);
+        assert_eq!(detect_serving_count(""), None);
     }
 }

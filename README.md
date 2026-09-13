@@ -39,6 +39,19 @@ Quantities can be whole numbers, decimals, simple fractions (`1/2`), or
 mixed numbers (`1 1/2`). A line that doesn't start with a number - like the
 `Serves 4` header above - is left as-is; only ingredient amounts are scaled.
 
+If the recipe's first line is a `Serves`/`Yield` header, `--from` can be
+left out and the serving count is read from it instead:
+
+```
+$ recipe-scale --to 6 lasagna.txt
+Serves 4
+2 1/4 cups ricotta
+...
+```
+
+If `--from` is omitted and the first line isn't a recognizable header,
+recipe-scale exits with an error rather than guessing.
+
 ## Why streaming matters here
 
 The input is read and processed one line at a time (`BufRead::lines`), and
